@@ -1,0 +1,27 @@
+- name: Check installed packages
+  yum: list=installed
+  register: installed_packages
+  tags: mysql
+
+- set_fact:
+    mysql51_installed: (installed_packages|json_query("results[?name=='mysql']")).0 is defined
+  tags: mysql
+
+- name: Uninstall MySQL 5.1 related packages
+  shell: "yum --cacheonly remove -y $(rpm -qa 'mysql*') postfix perl-DBD-MySQL"
+  when: mysql51_installed
+  tags: mysql
+
+- name: Install MySQL 5.7
+  yum: name=mysql57u-server state=installed
+  tags: mysql
+
+- name: Start MySQL Server
+  service: name=mysqld state=started
+  tags: mysql
+
+- mysql_db: name={{ db_name }} encoding=utf8mb4 collation=utf8mb4_unicode_ci state=present
+  tags: mysql
+
+- mysql_user: name={{ db_user }} password={{ db_password }} priv={{ db_name }}.*:ALL append_privs=yes state=present
+  tags: mysql

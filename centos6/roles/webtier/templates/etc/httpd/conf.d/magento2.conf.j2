@@ -1,0 +1,10 @@
+<Directory {{ magento2_dir }}>
+    AllowOverride All
+</Directory>
+<VirtualHost *:80>
+    ServerAdmin webmaster@{{ magento2_vhost }}
+    DocumentRoot {{ magento2_dir }}
+    ServerName {{ magento2_vhost }}
+    ErrorLog logs/{{ magento2_vhost }}-error_log
+    CustomLog logs/{{ magento2_vhost }}-access_log common
+</VirtualHost>

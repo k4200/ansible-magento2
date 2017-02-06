@@ -1,0 +1,9 @@
+---
+# file: dbservers.yml
+- hosts: dbservers
+  become: yes
+  vars_files:
+    - stage_vars/{{ stage }}.yml
+  roles:
+    - common
+    - dbtier

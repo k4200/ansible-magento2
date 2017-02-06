@@ -1,0 +1,139 @@
+- name: Create .composer/
+  file: path=/home/magento2/.composer/ state=directory
+
+- name: Create .composer/auth.json
+  template:
+    src: home/magento2/.composer/auth.json.j2
+    dest: /home/magento2/.composer/auth.json
+
+- name: Get Magento 2 files using composer
+  command: >
+    composer create-project --repository-url=https://repo.magento.com/
+    magento/project-community-edition {{ magento2_dir }}
+  args:
+    creates: "{{ magento2_dir}}/index.php"
+
+- name: Make bin/magento executable
+  file:
+    path: "{{ magento2_dir }}/bin/magento"
+    mode: u+x
+
+- name: Install Magento 2
+  command: >
+    bin/magento setup:install
+    --admin-firstname={{ mg2i_admin_firstname }}
+    --admin-lastname={{ mg2i_admin_lastname }}
+    --admin-email={{ mg2i_admin_email }}
+    --admin-user={{ mg2i_admin_user }}
+    --admin-password={{ mg2i_admin_password }}
+    --base-url=http://{{ magento2_vhost }}/
+    --db-name={{ db_name }}
+    --db-user={{ db_user }}
+    --db-password={{ db_password }}
+    --backend-frontname={{ mg2i_backend_frontname }}
+    --language={{ mg2i_language }}
+    --currency={{ mg2i_currency }}
+    --timezone={{ mg2i_timezone }}
+    --use-rewrites={{ mg2i_use_rewrites }}
+    --use-secure=0
+    --key={{ mg2i_key }}
+  args:
+    chdir: "{{ magento2_dir }}"
+    creates: "{{ magento2_dir}}/app/etc/config.php"
+
+- name: Create vendor/veriteworks/packages
+  file:
+    name: "{{ veriteworks_dir }}"
+    state: directory
+  register: create_veriteworks_dir
+
+- name: Copy Japanese language pack
+  copy: src=magento2/{{ magento2_ja_lang_filename }} dest={{ veriteworks_dir }} force=no
+
+- name: composer setting for veriteworks
+  command: >
+    composer config repositories.veriteworksartifacts
+    artifact {{ veriteworks_dir }}
+  args:
+    chdir: "{{ magento2_dir }}"
+  when: create_veriteworks_dir.changed
+
+- name: Install Magento 2 Japanese language pack
+  command: composer require veriteworks/m2-japaneselocale
+  args:
+    chdir: "{{ magento2_dir }}"
+    creates: "{{ magento2_dir}}/vendor/veriteworks/m2-japaneselocale"
+  register: install_language_pack
+
+- name: magento setup:upgrade
+  command: bin/magento setup:upgrade
+  args:
+    chdir: "{{ magento2_dir }}"
+  when: install_language_pack.changed
+
+- name: magento cache:clean
+  command: bin/magento cache:clean
+  args:
+    chdir: "{{ magento2_dir }}"
+  when: install_language_pack.changed
+
+- name: Deploy Magento 2 static content
+  command: bin/magento setup:static-content:deploy {{ mg2i_language }}
+  args:
+    chdir: "{{ magento2_dir }}"
+    creates: "{{ magento2_dir}}/pub/static/frontend/Magento/luma/{{ mg2i_language }}"
+
+- name: Set up cron jobs
+  cron:
+    name: "{{ item.key }}"
+    job: "{{ item.value }}"
+    user: "{{ magento2_linux_user }}"
+  with_dict:
+    magento2_cron1: "{{ magento2_dir }}/bin/magento cron:run | grep -v 'Ran jobs by schedule' >> {{ magento2_dir }}/var/log/magento.cron.log"
+    magento2_cron2: "php {{ magento2_dir }}/update/cron.php {{ magento2_dir }}/var/log/update.cron.log"
+    magento2_cron3: "{{ magento2_dir }}/bin/magento setup:cron:run >> {{ magento2_dir }}/var/log/setup.cron.log"
+
+- name: Copy Omise module
+  copy: src=magento2/{{ magento2_omise_filename }} dest=~/files/ force=no
+
+- name: Create a dir for Omise
+  file: path={{ omise_dir }} state=directory
+
+- name: Extract Omise module
+  unarchive:
+    src: "~/files/{{ magento2_omise_filename }}"
+    dest: "~/files"
+    creates: "~/files/omise-magento-master"
+    remote_src: True
+    force: no
+
+- name: Move Omise module files
+  shell: mv ~/files/omise-magento-master/* {{ omise_dir }}
+  args:
+    creates: "{{ omise_dir }}/composer.json"
+
+- name: Require Omise module
+  command: composer require omise/omise-php:2.6.0
+  args:
+    chdir: "{{ magento2_dir }}"
+    creates: "{{ magento2_dir}}/vendor/omise"
+  register: require_omise_module
+
+- name: Install Omise module
+  command: composer install
+  args:
+    chdir: "{{ omise_dir }}"
+  when: require_omise_module is defined and require_omise_module.changed
+
+- name: Enable Omise module
+  command: bin/magento module:enable Omise_Payment --clear-static-content
+  args:
+    chdir: "{{ magento2_dir }}"
+  when: require_omise_module is defined and require_omise_module.changed
+
+- name: magento setup:upgrade for Omise
+  command: bin/magento setup:upgrade
+  args:
+    chdir: "{{ magento2_dir }}"
+  when: require_omise_module.changed
+

@@ -1,0 +1,12 @@
+[webservers]
+0.0.0.0 ansible_user=root
+
+[dbservers]
+0.0.0.0 ansible_user=root
+
+[all_groups:children]
+webservers
+dbservers
+
+[all_groups:vars]
+stage=production

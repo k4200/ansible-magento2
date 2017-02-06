@@ -1,0 +1,13 @@
+[webservers]
+magento2.localdomain
+
+[dbservers]
+magento2.localdomain
+
+
+[all_groups:children]
+webservers
+dbservers
+
+[all_groups:vars]
+stage=development

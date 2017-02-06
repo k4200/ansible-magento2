@@ -1,0 +1,23 @@
+# magento2_vhost: magento2.example.com
+magento2_linux_user: magento2
+webserver_linux_group: apache
+# magento2_dir: /var/www/vhosts/magento2.example.com
+magento2_ja_lang_filename: veriteworks-m2-japaneselocale-1.1.0.zip
+magento2_omise_filename: omise-magento-master.zip
+
+# For composer
+# mangento2_auth_public_key:
+# mangento2_auth_private_key:
+
+# Variables for magento2 installer
+# mg2i_admin_firstname: Taro
+# mg2i_admin_lastname: Yamada
+# mg2i_admin_email: yamada@example.com
+# mg2i_admin_user: yamada
+# mg2i_admin_password: secretpassword
+# mg2i_backend_frontname: example_admin
+mg2i_language: ja_JP
+mg2i_currency: JPY
+mg2i_timezone: Asia/Tokyo
+mg2i_use_rewrites: 1
+# mg2i_key: xxxx

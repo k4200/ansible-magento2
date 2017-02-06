@@ -1,0 +1,106 @@
+- name: Install Apache
+  yum: pkg=httpd state=installed
+  tags: apache
+
+- name: Set up a virtual host
+  template: src=etc/httpd/conf.d/magento2.conf.j2 dest=/etc/httpd/conf.d/magento2.conf
+  notify: restart apache
+  tags: apache
+
+- name: Check PHP 5.3 is installed
+  command: yum list installed 'php-5.3*'
+  register: php53_packages
+  ignore_errors: yes
+  tags: php
+
+- name: Uninstall the default PHP packages
+  shell: "rpm -e $(rpm -qa 'php*')"
+  when: php53_packages.rc == 0
+  tags: php
+
+- name: Install PHP 7.0
+  yum: name={{ item }} state=installed
+  with_items:
+    - php70u
+    - php70u-cli
+    - php70u-curl
+    - php70u-gd
+    - php70u-intl
+    - php70u-mbstring
+    - php70u-mcrypt
+    - php70u-mhash
+    - php70u-openssl
+    - php70u-pdo
+    - php70u-mysqlnd
+    - php70u-soap
+    - php70u-xml
+    - php70u-xsl
+    - php70u-zip
+    - php70u-json
+    - php70u-iconv
+  tags: php
+
+- name: Increase PHP's memory_limit to 768MB
+  lineinfile:
+    dest: /etc/php.ini
+    regexp: '^memory_limit\s*='
+    line: 'memory_limit = 768M'
+  tags: php
+
+- name: Create Linux user "magento2"
+  user: name={{ magento2_linux_user }} groups={{ webserver_linux_group }}
+  tags: pre_magento2
+
+- name: Create a dir for Magento 2
+  file:
+    path: "{{ magento2_dir }}"
+    state: directory
+    owner: "{{ magento2_linux_user }}"
+    group: "{{ webserver_linux_group }}"
+    mode: 0775
+  tags: pre_magento2
+
+- include: magento2.yml
+  become: yes
+  become_user: "{{ magento2_linux_user }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/usr/local/bin"
+  vars:
+    veriteworks_dir: "{{ magento2_dir }}/vendor/veriteworks/packages"
+    omise_dir: "{{ magento2_dir }}/app/code/Omise/Payment"
+  tags: magento2
+
+- name: Set owner of files/directories for Magento 2
+  file:
+    path: "{{ magento2_dir }}"
+    owner: "{{ magento2_linux_user }}"
+    group: "{{ webserver_linux_group }}"
+    recurse: yes
+  tags: post_magento2
+
+- name: Set permissions of files/directories for Magento 2
+  file:
+    path: "{{ magento2_dir }}/{{ item }}"
+    mode: g+w
+    recurse: yes
+  with_items:
+    - var
+    - vendor
+    - pub/static
+    - pub/media
+    - app/etc
+  tags: post_magento2
+
+- name: Set permissions of directories for Magento 2
+  command: find {{ magento2_dir }}/{{ item }} -type d -exec chmod -c g+ws {} \;
+  with_items:
+    - var
+    - vendor
+    - pub/static
+    - pub/media
+    - app/etc
+  tags: post_magento2
+
+# Need to make it more secure?
+# http://devdocs.magento.com/guides/v2.1/config-guide/prod/prod_file-sys-perms.html
+

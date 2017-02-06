@@ -1,0 +1,3 @@
+db_name: magento2
+db_user: magento2
+# db_password is in stage_vars/

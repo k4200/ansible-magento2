@@ -1,0 +1,45 @@
+---
+# file: roles/common/tasks/main.yml
+
+- name: check IUS repo is installed
+  stat: path=/etc/yum.repos.d/ius.repo
+  register: ius_repo
+
+- name: download script to enable IUS repo
+  get_url:
+    url: https://setup.ius.io/
+    dest: ~/setup-ius.sh
+  when: ius_repo.stat.exists == False
+
+- name: enable IUS repo
+  command: sh ~/setup-ius.sh
+  when: ius_repo.stat.exists == False
+
+- name: upgrade all packages
+  yum:
+    name: '*'
+    state: latest
+
+- name: set timezone to Asia/Tokyo
+  copy:
+    src: etc/sysconfig/clock
+    dest: /etc/sysconfig/clock
+    group: root
+    owner: root
+    mode: 0644
+
+# - name: set timezone to Asia/Tokyo
+#  timezone:
+#    name: Asia/Tokyo
+
+- name: Create a dir for files neccessary for setup
+  file: path=~/files state=directory
+
+- name: Install necessary packages for server management
+  yum: name={{ item }} state=installed
+  with_items:
+    - screen
+    - MySQL-python
+
+- name: Copy .screenrc
+  copy: src=root/.screenrc dest=/root/.screenrc
