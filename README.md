@@ -2,7 +2,7 @@
 
 An Ansible playbook for installing Magento 2 on CentOS 6.x.
 
-It also installs the Japanese language pack and the Omise module since I need it. If you don't need them, see the installation section.
+It also installs the Japanese language pack and the Omise module since I need them. If you don't need them, see the installation section.
 
 # Prerequisites
 
@@ -28,7 +28,8 @@ All the file paths are relative to `centos6` directory.
 
 If you don't need the Japanese language pack or the Omise module, please comment out the lines for them in `roles/webtier/tasks/*`.
 
-If you tweak the installation options, please see the following page for more details:
+If you want to tweak the installation options, please see the following page for more details:
+
 http://devdocs.magento.com/guides/v2.1/install-gde/install/cli/install-cli-install.html
 
 # Notes
